@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Obelisk</string>
+    <string name="tagline">"The scroll awaits a sigil to bind it to the far obelisk."</string>
+    <string name="scan_sigil">Scan the Sigil</string>
+    <string name="disconnect">Sever the Link</string>
+    <string name="status_disconnected">Unbound</string>
+    <string name="status_connecting">Weaving the link…</string>
+    <string name="status_connected">Bound to the Obelisk</string>
+</resources>

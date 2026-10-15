@@ -1,0 +1,57 @@
+# ==========================================
+# C++ / CMake / Qt
+# ==========================================
+build/
+build-*/
+cmake-build-*/
+CMakeLists.txt.user*
+*.pro.user*
+.qtcreator/
+.qmlls.ini
+.qtc_clangd/
+compile_commands.json
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# ==========================================
+# Android / Gradle
+# ==========================================
+.gradle/
+**/build/
+local.properties
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+.navigation/
+captures/
+*.hprof
+.externalNativeBuild/
+.cxx/
+
+# ==========================================
+# IDEs & Editor Configuration
+# ==========================================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# Operating System & Temporary Files
+# ==========================================
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+*.bak

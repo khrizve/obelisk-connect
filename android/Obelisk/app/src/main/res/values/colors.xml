@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="rune_void">#0B0A12</color>
+    <color name="rune_abyss">#14121F</color>
+    <color name="rune_panel">#1C1930</color>
+    <color name="rune_panel_alt">#25203E</color>
+    <color name="rune_gold">#D4AF37</color>
+    <color name="rune_gold_bright">#F2D06B</color>
+    <color name="rune_arcane">#7B5CFA</color>
+    <color name="rune_arcane_bright">#9B82FF</color>
+    <color name="rune_panel_border">#3A2F5C</color>
+    <color name="rune_blood">#B2273A</color>
+    <color name="rune_ember">#E2703A</color>
+    <color name="rune_text_primary">#EDE6F5</color>
+    <color name="rune_text_muted">#9A8FB5</color>
+    <color name="rune_success">#4FA678</color>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Obelisk" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_gradient_void</item>
+        <item name="colorPrimary">@color/rune_arcane</item>
+        <item name="colorPrimaryDark">@color/rune_void</item>
+        <item name="colorAccent">@color/rune_gold</item>
+        <item name="colorSurface">@color/rune_panel</item>
+        <item name="colorControlHighlight">@color/rune_arcane</item>
+        <item name="android:textColorPrimary">@color/rune_text_primary</item>
+        <item name="android:textColorSecondary">@color/rune_text_muted</item>
+        <item name="android:statusBarColor">@color/rune_void</item>
+        <item name="android:navigationBarColor">@color/rune_void</item>
+    </style>
+</resources>

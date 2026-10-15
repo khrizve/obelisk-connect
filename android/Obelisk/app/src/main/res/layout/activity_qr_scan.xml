@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/rune_void">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ImageView
+        android:layout_width="260dp"
+        android:layout_height="260dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_scan_frame"
+        android:contentDescription="@null" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="48dp"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="10dp"
+        android:background="#CC14121F"
+        android:text="Scan the Sigil"
+        android:textColor="@color/rune_gold_bright"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:typeface="serif" />
+
+    <TextView
+        android:id="@+id/hintText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="28dp"
+        android:background="#E60B0A12"
+        android:text="Point the eye of your device at the sigil upon the obelisk's glass."
+        android:textColor="@color/rune_gold"
+        android:textSize="15sp"
+        android:typeface="sans"
+        android:textStyle="italic"
+        android:gravity="center" />
+
+</FrameLayout>
