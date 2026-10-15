@@ -89,3 +89,10 @@ cmake --build build -j$(nproc)
 2. Launch **Obelisk** on your phone.
 3. Tap **Scan the Sigil**, point the camera at your desktop screen, and approve the one-time screen capture prompt.
 4. The status indicator will turn green once authenticated.
+
+---
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0** (GPLv3). See the [LICENSE](LICENSE) file for the full license text.
+
