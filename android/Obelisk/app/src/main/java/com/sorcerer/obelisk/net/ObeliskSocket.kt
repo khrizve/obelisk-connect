@@ -2,6 +2,7 @@ package com.sorcerer.obelisk.net
 
 import android.util.Log
 import okhttp3.*
+import okio.ByteString.Companion.toByteString
 import java.util.concurrent.TimeUnit
 
 /**
@@ -111,6 +112,11 @@ object ObeliskSocket {
             return false
         }
         return webSocket?.send(text) ?: false
+    }
+
+    fun sendBinary(bytes: ByteArray): Boolean {
+        if (!isConnected) return false
+        return webSocket?.send(bytes.toByteString()) ?: false
     }
 
     private fun flushPreAuthQueue() {

@@ -109,6 +109,7 @@ signals:
 private slots:
     void onNewConnection();
     void onTextMessageReceived(const QString &message);
+    void onBinaryMessageReceived(const QByteArray &message);
     void onSocketDisconnected();
 
 private:

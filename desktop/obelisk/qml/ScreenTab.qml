@@ -145,8 +145,10 @@ Column {
             anchors.fill: parent
             anchors.margins: 16
             fillMode: Image.PreserveAspectFit
-            asynchronous: true
+            asynchronous: false
             cache: false
+            smooth: true
+            mipmap: true
             source: root.frameRevision > 0 ? "image://frames/current?r=" + root.frameRevision : ""
             visible: root.mirroring && root.frameRevision > 0
         }
