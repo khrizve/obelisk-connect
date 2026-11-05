@@ -10,13 +10,11 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.Base64
 import android.util.DisplayMetrics
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import com.sorcerer.obelisk.net.Protocol
 import com.sorcerer.obelisk.net.ObeliskSocket
-import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
 /**
@@ -40,7 +38,11 @@ class ScreenCaptureManager(private val context: Context) {
     private var frameHeight = 0
     private var lastSentAt = 0L
     private var paused = true
-    private val minFrameIntervalMs = 110L // ~9 fps cap
+    private var drainScheduled = false
+    private var reusableBitmap: Bitmap? = null
+    private val minFrameIntervalMs = 33L // ~30 fps cap
+    private val maxPendingSocketBytes = 100 * 1024L
+    private val jpegStream = ByteArrayOutputStream(128 * 1024)
 
     fun initProjection(resultCode: Int, data: Intent) {
         if (mediaProjection != null) {
@@ -100,7 +102,7 @@ class ScreenCaptureManager(private val context: Context) {
         paused = false
 
         try {
-            val reader = ImageReader.newInstance(frameWidth, frameHeight, android.graphics.PixelFormat.RGBA_8888, 2)
+            val reader = ImageReader.newInstance(frameWidth, frameHeight, android.graphics.PixelFormat.RGBA_8888, 4)
             imageReader = reader
 
             virtualDisplay = projection.createVirtualDisplay(
@@ -157,7 +159,7 @@ class ScreenCaptureManager(private val context: Context) {
 
         try {
             val oldReader = imageReader
-            val newReader = ImageReader.newInstance(newWidth, newHeight, android.graphics.PixelFormat.RGBA_8888, 2)
+            val newReader = ImageReader.newInstance(newWidth, newHeight, android.graphics.PixelFormat.RGBA_8888, 4)
 
             frameWidth = newWidth
             frameHeight = newHeight
@@ -195,10 +197,10 @@ class ScreenCaptureManager(private val context: Context) {
     }
 
     private fun downscaledDimensions(metrics: DisplayMetrics): Pair<Int, Int> {
-        // Downscale for bandwidth: cap the long edge at 720px, whichever
-        // axis that currently is — this naturally adapts to both
-        // orientations instead of assuming portrait.
-        val scale = 720f / maxOf(metrics.widthPixels, metrics.heightPixels)
+        // 1600px on the long edge (~720x1600 on 20:9 phones) exceeds the
+        // vertical pixel height of a 1080p desktop window while cutting
+        // per-frame pixel count by >55% compared to raw 1080x2400+.
+        val scale = (1600f / maxOf(metrics.widthPixels, metrics.heightPixels)).coerceAtMost(1f)
         val w = (metrics.widthPixels * scale).toInt().coerceAtLeast(2)
         val h = (metrics.heightPixels * scale).toInt().coerceAtLeast(2)
         return w to h
@@ -206,27 +208,54 @@ class ScreenCaptureManager(private val context: Context) {
 
     private fun imageAvailableListener(): ImageReader.OnImageAvailableListener {
         return ImageReader.OnImageAvailableListener { reader ->
-            if (paused) {
-                reader.acquireLatestImage()?.close()
-                return@OnImageAvailableListener
-            }
-            val now = System.currentTimeMillis()
-            if (now - lastSentAt < minFrameIntervalMs) {
-                reader.acquireLatestImage()?.close()
-                return@OnImageAvailableListener
-            }
-            val image = reader.acquireLatestImage() ?: return@OnImageAvailableListener
-            try {
-                lastSentAt = now
-                val bitmap = imageToBitmap(image)
-                sendFrame(bitmap)
-                bitmap.recycle()
-            } catch (e: Exception) {
-                Log.e("ScreenCapture", "frame error: ${e.message}")
-            } finally {
-                image.close()
-            }
+            processAvailableFrame(reader)
         }
+    }
+
+    private fun processAvailableFrame(reader: ImageReader) {
+        if (paused) {
+            reader.acquireLatestImage()?.close()
+            return
+        }
+        if (ObeliskSocket.pendingBytes() > maxPendingSocketBytes) {
+            // Socket write queue is backed up; drop this frame instead of
+            // building up latency in the WebSocket send buffer, and re-check
+            // shortly in case this was the final frame on screen.
+            reader.acquireLatestImage()?.close()
+            scheduleDrain(reader, minFrameIntervalMs)
+            return
+        }
+        val now = System.currentTimeMillis()
+        val elapsed = now - lastSentAt
+        if (elapsed < minFrameIntervalMs) {
+            scheduleDrain(reader, minFrameIntervalMs - elapsed)
+            return
+        }
+        val image = reader.acquireLatestImage() ?: return
+        try {
+            lastSentAt = now
+            val bitmap = imageToBitmap(image)
+            sendFrame(bitmap)
+            if (bitmap !== reusableBitmap) {
+                bitmap.recycle()
+            }
+        } catch (e: Exception) {
+            Log.e("ScreenCapture", "frame error: ${e.message}")
+        } finally {
+            image.close()
+        }
+    }
+
+    private fun scheduleDrain(reader: ImageReader, delayMs: Long) {
+        if (drainScheduled || paused) return
+        val h = handler ?: return
+        drainScheduled = true
+        h.postDelayed({
+            drainScheduled = false
+            if (!paused && imageReader === reader) {
+                processAvailableFrame(reader)
+            }
+        }, delayMs.coerceAtLeast(5L))
     }
 
     /** Pauses frame delivery without tearing down the virtual display, since
@@ -245,6 +274,8 @@ class ScreenCaptureManager(private val context: Context) {
         virtualDisplay = null
         imageReader?.close()
         imageReader = null
+        reusableBitmap?.recycle()
+        reusableBitmap = null
         handlerThread?.quitSafely()
         handlerThread = null
         handler = null
@@ -255,11 +286,18 @@ class ScreenCaptureManager(private val context: Context) {
     private fun imageToBitmap(image: android.media.Image): Bitmap {
         val plane = image.planes[0]
         val buffer = plane.buffer
+        buffer.rewind()
         val pixelStride = plane.pixelStride
         val rowStride = plane.rowStride
         val rowPadding = rowStride - pixelStride * frameWidth
+        val paddedWidth = frameWidth + rowPadding / pixelStride
 
-        val bitmap = createBitmap(frameWidth + rowPadding / pixelStride, frameHeight)
+        var bitmap = reusableBitmap
+        if (bitmap == null || bitmap.isRecycled || bitmap.width != paddedWidth || bitmap.height != frameHeight) {
+            bitmap?.recycle()
+            bitmap = createBitmap(paddedWidth, frameHeight)
+            reusableBitmap = bitmap
+        }
         bitmap.copyPixelsFromBuffer(buffer)
         return if (bitmap.width != frameWidth) {
             Bitmap.createBitmap(bitmap, 0, 0, frameWidth, frameHeight)
@@ -267,14 +305,8 @@ class ScreenCaptureManager(private val context: Context) {
     }
 
     private fun sendFrame(bitmap: Bitmap) {
-        val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 45, stream)
-        val b64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
-        val json = JSONObject()
-            .put("type", Protocol.FRAME)
-            .put("w", frameWidth)
-            .put("h", frameHeight)
-            .put("data", b64)
-        ObeliskSocket.send(json.toString())
+        jpegStream.reset()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, jpegStream)
+        ObeliskSocket.sendBinary(jpegStream.toByteArray())
     }
 }

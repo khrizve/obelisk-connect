@@ -83,7 +83,17 @@ void TowerServer::onNewConnection()
         return;
 
     connect(socket, &QWebSocket::textMessageReceived, this, &TowerServer::onTextMessageReceived);
+    connect(socket, &QWebSocket::binaryMessageReceived, this, &TowerServer::onBinaryMessageReceived);
     connect(socket, &QWebSocket::disconnected, this, &TowerServer::onSocketDisconnected);
+}
+
+void TowerServer::onBinaryMessageReceived(const QByteArray &message)
+{
+    auto *socket = qobject_cast<QWebSocket *>(sender());
+    if (!socket || socket != m_activeSocket)
+        return;
+
+    emit frameReceived(message, 0, 0);
 }
 
 void TowerServer::onTextMessageReceived(const QString &message)
